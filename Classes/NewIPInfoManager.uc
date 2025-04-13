@@ -1,0 +1,337 @@
+//=============================================================================
+// NewIPInfoManager.uc
+// Copyright (C) 2025 0xC0ncord <concord@fuwafuwatime.moe>
+//
+// This program is free software; you can redistribute and/or modify
+// it under the terms of the Open Unreal Mod License version 1.1.
+//=============================================================================
+
+class NewIPInfoManager extends ReplicationInfo
+    dependson(ExtendedConsole);
+
+var PlayerController PC;
+var bool bWasSpectator;
+var bool bInitialized;
+var bool bOpened;
+var vector PawnLocation;
+var float IdleTimeout;
+var bool bAddFavorite;
+
+var string NewIPHeaderText;
+var string NewIPContentText;
+var string NewIPAlreadyFavoriteText;
+var string NewIPAddress;
+var string NewFavoriteName;
+
+var NewIPInfoPage InfoPage;
+
+var class<GUIPage> PlayerAgreementMenuClass;
+var GUIPage AgreementPage;
+var Actor AgreementManager;
+var int AgreementTimeout;
+var bool bUpdateAgreementTimeout;
+
+var NewIPInfoConfig ConfigData;
+
+replication
+{
+    reliable if(Role == ROLE_Authority)
+        NewIPHeaderText, NewIPContentText, NewIPAlreadyFavoriteText,
+        NewIPAddress, NewFavoriteName;
+    reliable if(Role < ROLE_Authority)
+        ServerAcknowledge;
+}
+
+simulated function PostNetReceive()
+{
+    if(InfoPage != None && !InfoPage.bClosed)
+        InfoPage.SetText();
+}
+
+function Setup()
+{
+    PC = PlayerController(Owner);
+    bWasSpectator = PC.PlayerReplicationInfo.bOnlySpectator;
+
+    NewIPHeaderText = class'NewIPInfoServerConfig'.default.HeaderText;
+    NewIPContentText = class'NewIPInfoServerConfig'.default.ContentText;
+    NewIPAlreadyFavoriteText = class'NewIPInfoServerConfig'.default.AlreadyFavoriteText;
+    NewIPAddress = class'NewIPInfoServerConfig'.default.NewIPAddress;
+    NewFavoriteName = class'NewIPInfoServerConfig'.default.NewFavoriteName;
+
+    if(!class'NewIPInfoServerConfig'.default.bUseSpawnProtection)
+    {
+        if(!bWasSpectator)
+        {
+            if(PC.Pawn != None)
+                PC.Pawn.Died(None, class'DamageType', PC.Pawn.Location);
+
+            PC.PlayerReplicationInfo.bOnlySpectator = true;
+            PC.GotoState('Spectating');
+        }
+    }
+    else
+    {
+        if(Level.NetMode == NM_DedicatedServer)
+            Disable('Tick');
+
+        if(PC.Pawn != None)
+        {
+            PC.Pawn.SetPhysics(PHYS_None); // to avoid getting pushed around
+            PawnLocation = PC.Pawn.Location;
+        }
+    }
+
+    IdleTimeout = Level.TimeSeconds + class'NewIPInfoServerConfig'.default.IdleTimeoutSeconds;
+    PC.LastActiveTime = IdleTimeout;
+
+    bInitialized = true;
+}
+
+simulated function Tick(float dt)
+{
+    local string ConfigDataName;
+
+    if(Role == ROLE_Authority)
+    {
+        if(class'NewIPInfoServerConfig'.default.bUseSpawnProtection)
+        {
+            // actual spawn protection handled by game rules
+            PC.Pawn.SetPhysics(PHYS_None);
+            if(PC.Pawn.Location != PawnLocation)
+                PC.Pawn.SetLocation(PawnLocation);
+        }
+
+        // make sure the player doesn't get kicked while this menu is open
+        if(PC.LastActiveTime != IdleTimeout && Level.TimeSeconds < IdleTimeout)
+            PC.LastActiveTime = IdleTimeout;
+
+        if(bUpdateAgreementTimeout)
+        {
+            bUpdateAgreementTimeout = False;
+            AgreementTimeout = int(AgreementManager.GetPropertyText("Timeout"));
+            AgreementManager.LifeSpan = 0;
+        }
+
+        // if we are a server and this isn't the host's controller
+        if(Viewport(PC.Player) == None)
+            return;
+    }
+
+    if(bOpened)
+    {
+        // check for player agreement and shim it so as to not break it
+        if(PlayerAgreementMenuClass == None)
+        {
+            PlayerAgreementMenuClass = class<GUIPage>(DynamicLoadObject("DruidsPlayerAgreement110.PlayerAgreementPage", class'Class', true));
+            if(PlayerAgreementMenuClass == None)
+            {
+                // mod doesnt appear to be installed, no shimming necessary
+                Disable('Tick');
+                return;
+            }
+        }
+
+        // at this point the mod exists, check if its menu is opened
+        AgreementPage = GUIController(PC.Player.GUIController).FindMenuByClass(PlayerAgreementMenuClass);
+        if(AgreementPage != None)
+        {
+            // if we don't find it, try again every tick just in case
+            ShimPlayerAgreement();
+            Disable('Tick');
+        }
+
+        return;
+    }
+
+    PC = Level.GetLocalPlayerController();
+    if(
+        PC == None
+        || (
+            Level.NetMode == NM_ListenServer
+            && PC != Owner
+        )
+    )
+    {
+        return;
+    }
+
+    ConfigDataName = Level.GetAddressURL();
+    ConfigData = NewIPInfoConfig(FindObject("Package." $ ConfigDataName, class'NewIPInfoConfig'));
+    if(ConfigData == None)
+        ConfigData = new(None, ConfigDataName) class'NewIPInfoConfig';
+
+    if(ConfigData.bAcknowledged)
+    {
+        ServerAcknowledge();
+        Disable('Tick');
+    }
+    else
+    {
+        CheckFavorite();
+        ShowMenu();
+        bOpened = true;
+    }
+}
+
+simulated function CheckFavorite()
+{
+    local int i;
+    local ExtendedConsole.ServerFavorite Favorite;
+    local string CurrentIP;
+    local int CurrentPort;
+    local string NewIP;
+    local int NewPort;
+
+	CurrentIP = Level.GetAddressURL();
+    i = InStr(CurrentIP, ":");
+
+	CurrentIP = Left(CurrentIP, i);
+    CurrentPort = int(Mid(CurrentIP, i + 1));
+
+	NewIP = Left(NewIPAddress, InStr(NewIPAddress, ":"));
+    i = InStr(NewIP, ":");
+    NewPort = int(Mid(NewIP, i + 1));
+
+    // check if the new IP is already favorited
+    Favorite.IP = NewIP;
+    Favorite.Port = NewPort;
+    if(class'ExtendedConsole'.static.InFavorites(Favorite))
+        return;
+
+    // then, check if the current IP is favorited. if so, we'll
+    // add the new IP to favorites automatically
+    Favorite.IP = CurrentIP;
+    Favorite.Port = CurrentPort;
+    if(class'ExtendedConsole'.static.InFavorites(Favorite))
+        bAddFavorite = true;
+}
+
+simulated function MaybeAddFavorite()
+{
+    local int i;
+    local ExtendedConsole.ServerFavorite NewFavorite;
+
+    if(bAddFavorite)
+    {
+        i = InStr(NewIPAddress, ":");
+        NewFavorite.IP = Left(NewIPAddress, i);
+        NewFavorite.Port = int(Mid(NewIPAddress, i + 1));
+        NewFavorite.ServerName = class'NewIPInfoPage'.static.Colorize(NewFavoriteName);
+        class'ExtendedConsole'.static.AddFavorite(NewFavorite);
+    }
+}
+
+simulated function ShowMenu()
+{
+    if(
+        PC == None
+        || PC.Player == None
+        || PC.Player.GUIController == None
+    )
+    {
+        return;
+    }
+
+    PC.Player.GUIController.OpenMenu(string(class'NewIPInfoPage'));
+    InfoPage = NewIPInfoPage(GUIController(PC.Player.GUIController).TopPage());
+    if(InfoPage != None)
+    {
+        InfoPage.Manager = Self;
+        InfoPage.SetText();
+    }
+}
+
+function ServerShimAgreement(Actor A)
+{
+    AgreementManager = A;
+    bUpdateAgreementTimeout = True; // update timeout on next frame
+    Enable('Tick');
+}
+
+simulated function ShimPlayerAgreement()
+{
+    AgreementPage.SetVisibility(false);
+    AgreementPage.SetTimer(0, false);
+
+    // hack, reopen our menu so that it's at the top of the stack
+    if(GUIController(PC.Player.GUIController).TopPage() != InfoPage)
+    {
+        InfoPage.Manager = None;
+        InfoPage.bClosed = true;
+        GUIController(PC.Player.GUIController).RemoveMenu(InfoPage, false);
+
+        PC.Player.GUIController.OpenMenu(string(class'NewIPInfoPage'));
+        InfoPage = NewIPInfoPage(GUIController(PC.Player.GUIController).TopPage());
+        if(InfoPage != None)
+            InfoPage.Manager = Self;
+    }
+}
+
+simulated function UnShimPlayerAgreement()
+{
+    AgreementPage.SetVisibility(true);
+    AgreementPage.SetTimer(1, true);
+}
+
+function ServerAcknowledge()
+{
+    Destroy();
+}
+
+function Destroyed()
+{
+    if(AgreementManager != None)
+    {
+        // note that the agreement manager could be destroyed early if the player already agreed before
+        AgreementManager.LifeSpan = AgreementTimeout;
+    }
+    else
+    {
+        // do NOT respawn player here if player agreement must do something
+        if(bInitialized && PC == None)
+        {
+            Level.Game.NumPlayers--;
+            Level.Game.NumSpectators++;
+        }
+
+        if(PC != None)
+        {
+            if(class'NewIPInfoServerConfig'.default.bUseSpawnProtection)
+            {
+                PC.Pawn.DeactivateSpawnProtection();
+                PC.Pawn.SetMovementPhysics();
+            }
+            else if(!bWasSpectator)
+            {
+                PC.bBehindView = false;
+                PC.FixFOV();
+                PC.ServerViewSelf();
+                PC.PlayerReplicationInfo.bOnlySpectator = false;
+                PC.PlayerReplicationInfo.Reset();
+                PC.Adrenaline = 0;
+                PC.BroadcastLocalizedMessage(Level.Game.GameMessageClass, 1, PC.PlayerReplicationInfo);
+                PC.GotoState('PlayerWaiting');
+                if(Level.Game.bTeamGame)
+                    Level.Game.ChangeTeam(PC, Level.Game.PickTeam(int(PC.GetURLOption("Team")), None), false);
+                if(Level.Game.IsA('InvasionX'))
+                {
+                    PC.PlayerReplicationInfo.NumLives = 0;
+                    PC.PlayerReplicationInfo.bOutOfLives = false;
+                    Level.Game.RestartPlayer(PC);
+                    PC.ServerGivePawn();
+                }
+            }
+        }
+    }
+}
+
+defaultproperties
+{
+    NetUpdateFrequency=0.25
+    NetPriority=3.0
+    bSkipActorPropertyReplication=True
+    bReplicateMovement=False
+    bAlwaysRelevant=False
+    bOnlyRelevantToOwner=True
+}
