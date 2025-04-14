@@ -7,7 +7,8 @@
 //=============================================================================
 
 class NewIPInfoServerConfig extends Object
-	config(NewIPInfo);
+	config(NewIPInfo)
+	PerObjectConfig;
 
 var() config string HeaderText;
 var() config string ContentText;

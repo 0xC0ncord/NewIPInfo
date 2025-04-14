@@ -8,17 +8,27 @@
 
 class MutNewIPInfo extends Mutator;
 
+const CONFIG_DATA_NAME = "Main";
+
 // Note to mod authors: if you are making a customized version of NewIPInfo,
 // feel free to remove this line. It is used to track internal versions of the
 // mod for official releases.
 const INTERNAL_VERSION = $$"__VERSIONSTRING__"$$;
 
+var NewIPInfoServerConfig ConfigData;
 var NewIPInfoRules Rules;
 var array<PlayerController> Pending;
 
 function PostBeginPlay()
 {
-    if(class'NewIPInfoServerConfig'.default.bUseSpawnProtection)
+    ConfigData = NewIPInfoServerConfig(FindObject("Package." $ CONFIG_DATA_NAME, class'NewIPInfoServerConfig'));
+    if(ConfigData == None)
+    {
+        ConfigData = new(None, CONFIG_DATA_NAME) class'NewIPInfoServerConfig';
+        ConfigData.SaveConfig(); // write out to config file for the first time
+    }
+
+    if(ConfigData.bUseSpawnProtection)
     {
         Rules = Spawn(class'NewIPInfoRules');
         Rules.NextGameRules = Level.Game.GameRulesModifiers;
@@ -88,7 +98,7 @@ function CreateManagerFor(PlayerController PC)
         return;
 
     A = Spawn(class'NewIPInfoManager', PC);
-    A.Setup();
+    A.Setup(ConfigData);
 }
 
 defaultproperties

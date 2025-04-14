@@ -9,6 +9,8 @@
 class NewIPInfoManager extends ReplicationInfo
     dependson(ExtendedConsole);
 
+var NewIPInfoServerConfig ServerConfig;
+
 var PlayerController PC;
 var bool bWasSpectator;
 var bool bInitialized;
@@ -48,18 +50,19 @@ simulated function PostNetReceive()
         InfoPage.SetText();
 }
 
-function Setup()
+function Setup(NewIPInfoServerConfig SC)
 {
+    ServerConfig = SC;
     PC = PlayerController(Owner);
     bWasSpectator = PC.PlayerReplicationInfo.bOnlySpectator;
 
-    NewIPHeaderText = class'NewIPInfoServerConfig'.default.HeaderText;
-    NewIPContentText = class'NewIPInfoServerConfig'.default.ContentText;
-    NewIPAlreadyFavoriteText = class'NewIPInfoServerConfig'.default.AlreadyFavoriteText;
-    NewIPAddress = class'NewIPInfoServerConfig'.default.NewIPAddress;
-    NewFavoriteName = class'NewIPInfoServerConfig'.default.NewFavoriteName;
+    NewIPHeaderText = SC.HeaderText;
+    NewIPContentText = SC.ContentText;
+    NewIPAlreadyFavoriteText = SC.AlreadyFavoriteText;
+    NewIPAddress = SC.NewIPAddress;
+    NewFavoriteName = SC.NewFavoriteName;
 
-    if(!class'NewIPInfoServerConfig'.default.bUseSpawnProtection)
+    if(!SC.bUseSpawnProtection)
     {
         if(!bWasSpectator)
         {
@@ -82,7 +85,7 @@ function Setup()
         }
     }
 
-    IdleTimeout = Level.TimeSeconds + class'NewIPInfoServerConfig'.default.IdleTimeoutSeconds;
+    IdleTimeout = Level.TimeSeconds + SC.IdleTimeoutSeconds;
     PC.LastActiveTime = IdleTimeout;
 
     bInitialized = true;
@@ -94,7 +97,7 @@ simulated function Tick(float dt)
 
     if(Role == ROLE_Authority)
     {
-        if(class'NewIPInfoServerConfig'.default.bUseSpawnProtection)
+        if(ServerConfig.bUseSpawnProtection)
         {
             // actual spawn protection handled by game rules
             PC.Pawn.SetPhysics(PHYS_None);
@@ -297,7 +300,7 @@ function Destroyed()
 
         if(PC != None)
         {
-            if(class'NewIPInfoServerConfig'.default.bUseSpawnProtection)
+            if(ServerConfig.bUseSpawnProtection && PC.Pawn != None)
             {
                 PC.Pawn.DeactivateSpawnProtection();
                 PC.Pawn.SetMovementPhysics();

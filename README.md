@@ -27,7 +27,7 @@ Configuration
 -------------
 On the server, some additional options may be configured in the `NewIPInfo.ini` file:
 ```ini
-[NewIPInfo100.NewIPInfoServerConfig]
+[Main NewIPInfoServerConfig]
 HeaderText="$(255,0,0)We are changing IPs!"
 ContentText="$(255,255,255)Our server will be at $(0,192,255)$1$(255,255,255) starting on $(0,255,0)January 1st, 1970. $(255,255,255)Save the date!"
 AlreadyFavoriteText="$(255,0,255)Since you have already favorited us, we will favorite our new IP for you automatically."
