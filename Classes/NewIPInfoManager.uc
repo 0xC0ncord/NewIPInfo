@@ -18,6 +18,7 @@ var bool bOpened;
 var vector PawnLocation;
 var float IdleTimeout;
 var bool bAddFavorite;
+var bool bNoPlayerAgreementShim;
 
 var string NewIPHeaderText;
 var string NewIPContentText;
@@ -121,27 +122,36 @@ simulated function Tick(float dt)
             return;
     }
 
-    if(bOpened)
+    if(bOpened && !ConfigData.bAcknowledged)
     {
         // check for player agreement and shim it so as to not break it
-        if(PlayerAgreementMenuClass == None)
+        if(!bNoPlayerAgreementShim)
         {
-            PlayerAgreementMenuClass = class<GUIPage>(DynamicLoadObject("DruidsPlayerAgreement110.PlayerAgreementPage", class'Class', true));
+            if(PlayerAgreementMenuClass == None)
+                PlayerAgreementMenuClass = class<GUIPage>(DynamicLoadObject("DruidsPlayerAgreement110.PlayerAgreementPage", class'Class', true));
+
             if(PlayerAgreementMenuClass == None)
             {
                 // mod doesnt appear to be installed, no shimming necessary
-                Disable('Tick');
-                return;
+                bNoPlayerAgreementShim = true;
+            }
+            else
+            {
+                // the mod exists, check if its menu is opened
+                AgreementPage = GUIController(PC.Player.GUIController).FindMenuByClass(PlayerAgreementMenuClass);
+                if(AgreementPage != None)
+                {
+                    // if we don't find it, try again every tick just in case
+                    ShimPlayerAgreement();
+                }
             }
         }
 
-        // at this point the mod exists, check if its menu is opened
-        AgreementPage = GUIController(PC.Player.GUIController).FindMenuByClass(PlayerAgreementMenuClass);
-        if(AgreementPage != None)
+        if(GUIController(PC.Player.GUIController).TopPage() != InfoPage)
         {
-            // if we don't find it, try again every tick just in case
-            ShimPlayerAgreement();
-            Disable('Tick');
+            Log(ConfigData.bAcknowledged);
+            Log(GUIController(PC.Player.GUIController).TopPage());
+            ReopenMenuOnTop();
         }
 
         return;
@@ -256,25 +266,22 @@ simulated function ShimPlayerAgreement()
 {
     AgreementPage.SetVisibility(false);
     AgreementPage.SetTimer(0, false);
-
-    // hack, reopen our menu so that it's at the top of the stack
-    if(GUIController(PC.Player.GUIController).TopPage() != InfoPage)
-    {
-        InfoPage.Manager = None;
-        InfoPage.bClosed = true;
-        GUIController(PC.Player.GUIController).RemoveMenu(InfoPage, false);
-
-        PC.Player.GUIController.OpenMenu(string(class'NewIPInfoPage'));
-        InfoPage = NewIPInfoPage(GUIController(PC.Player.GUIController).TopPage());
-        if(InfoPage != None)
-            InfoPage.Manager = Self;
-    }
 }
 
 simulated function UnShimPlayerAgreement()
 {
     AgreementPage.SetVisibility(true);
     AgreementPage.SetTimer(1, true);
+}
+
+// hack to reopen our menu so that it's at the top of the stack
+simulated function ReopenMenuOnTop()
+{
+    InfoPage.Manager = None;
+    InfoPage.bClosed = true;
+    GUIController(PC.Player.GUIController).RemoveMenu(InfoPage, false);
+
+    ShowMenu();
 }
 
 function ServerAcknowledge()
