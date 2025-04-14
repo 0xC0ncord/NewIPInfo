@@ -40,7 +40,7 @@ function SetText()
     else
     {
         lbText.MyScrollText.SetContent(
-            Colorize(Manager.NewIPContentText)
+            Colorize(Repl(Manager.NewIPContentText, "$1", Manager.NewIPAddress))
         );
     }
 }
