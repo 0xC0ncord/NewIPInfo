@@ -214,6 +214,8 @@ simulated function CheckFavorite()
     // add the new IP to favorites automatically
     Favorite.IP = CurrentIP;
     Favorite.Port = CurrentPort;
+    // current query port could be different from the new one
+    Favorite.QueryPort = CurrentPort + 1;
     if(class'ExtendedConsole'.static.InFavorites(Favorite))
     {
         bIsFavorite = true;
