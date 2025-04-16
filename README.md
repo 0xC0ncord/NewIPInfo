@@ -11,13 +11,13 @@ Installation
 Download the [latest release](https://github.com/0xC0ncord/NewIPInfo/releases/latest) and install it to your server's `System/` directory. Then, to activate the mod, do one of the following:
 1. Add the server actor to your `ServerActors`:
 ```
-ServerActors=NewIPInfo101.NewIPInfoServerActor
+ServerActors=NewIPInfo102.NewIPInfoServerActor
 ```
 OR
 
 2. Add the mutator to your server's commandline (placement order does not matter):
 ```
-Mutator=NewIPInfo101.MutNewIPInfo,...
+Mutator=NewIPInfo102.MutNewIPInfo,...
 ```
 You must also ensure that this package exists on your server's redirect, regardless of whether you add it as a Server Actor or as a Mutator.
 No matter which method you choose, your server will have the `MutNewIPInfo` mutator running which is needed to react to joining players and prompt them with the menu.
@@ -29,8 +29,7 @@ On the server, some additional options may be configured in the `NewIPInfo.ini` 
 ```ini
 [Main NewIPInfoServerConfig]
 HeaderText="$(255,0,0)We are changing IPs!"
-ContentText="$(255,255,255)Our server will be at $(0,192,255)$1$(255,255,255) starting on $(0,255,0)January 1st, 1970. $(255,255,255)Save the date!"
-AlreadyFavoriteText="$(255,0,255)Since you have already favorited us, we will favorite our new IP for you automatically."
+ContentText="$(255,255,255)Our server will be at $(0,192,255)$1$(255,255,255) starting on $(0,255,0)January 1st, 1970. $(255,255,255)Save the date!||By $(255,0,255)checking the box below$(255,255,255), we'll favorite our new IP for you automatically."
 NewIPAddress="127.0.0.1:7777"
 NewFavoriteName="$(255,0,0)(NEW IP: Jan 1 1970) $(255,255,255)Clan Awesome's Server"
 bUseSpawnProtection=True
