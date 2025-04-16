@@ -200,8 +200,8 @@ simulated function CheckFavorite()
 	CurrentIP = Left(CurrentIP, i);
     CurrentPort = int(Mid(CurrentIP, i + 1));
 
-	NewIP = Left(NewIPAddress, InStr(NewIPAddress, ":"));
     i = InStr(NewIP, ":");
+	NewIP = Left(NewIPAddress, i);
     NewPort = int(Mid(NewIP, i + 1));
 
     // check if the new IP is already favorited
