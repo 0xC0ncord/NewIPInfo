@@ -208,7 +208,13 @@ simulated function CheckFavorite()
     Favorite.IP = NewIP;
     Favorite.Port = NewPort;
     if(class'ExtendedConsole'.static.InFavorites(Favorite))
+    {
+        LOGD("New IP already in favorites! Nothing to do!");
+        LOGD("Favorite.IP:" @ Favorite.IP);
+        LOGD("Favorite.Port:" @ Favorite.Port);
+        LOGD("Favorite.QueryPort:" @ Favorite.QueryPort);
         return;
+    }
 
     // then, check if the current IP is favorited. if so, we'll
     // add the new IP to favorites automatically
@@ -218,6 +224,10 @@ simulated function CheckFavorite()
     Favorite.QueryPort = CurrentPort + 1;
     if(class'ExtendedConsole'.static.InFavorites(Favorite))
     {
+        LOGD("Current IP in favorites! Updating bIsFavorite!");
+        LOGD("Favorite.IP:" @ Favorite.IP);
+        LOGD("Favorite.Port:" @ Favorite.Port);
+        LOGD("Favorite.QueryPort:" @ Favorite.QueryPort);
         bIsFavorite = true;
     }
 }
