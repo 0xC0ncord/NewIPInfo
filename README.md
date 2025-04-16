@@ -38,7 +38,6 @@ IdleTimeoutSeconds=120
 For the below string properties, color codes in the format `$(R,G,B)` are supported when specified.
 - `HeaderText` - the text to display at the top of the window in the text box. This string supports color codes.
 - `ContentText` - the main text to display in the text box. Multiple lines are supported with the `|` character as well as color codes. Finally, the substring `$1` will be automatically replaced with the content specified in `NewIPAddress` if it's present.
-- `AlreadyFavoriteText` - this text will be appended to the text box if the player has already favorited your server as a courtesy to let them know you've modified their favorites on their behalf (which is usually a rude thing to do). This string supports multiple lines with the `|` character as well as color codes.
 - `NewIPAddress` - the `ADDRESS:PORT` combo for your server's new IP address.
 - `NewFavoriteName` - if this mod adds your server's new IP to a player's favorites, this is the name it will show up in the server browser as. Note that as soon as your server goes online on that IP, this name will be overwritten with the actual name of the server when the client goes to ping it. This string supports color codes.
 - `bUseSpawnProtection` - whether joining players should have spawn protection while the NewIPInfo menu is open. If disabled, players will be made into spectators instead and will auto-join when the menu is closed.
