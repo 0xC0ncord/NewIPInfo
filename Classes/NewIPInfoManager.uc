@@ -17,12 +17,11 @@ var bool bInitialized;
 var bool bOpened;
 var vector PawnLocation;
 var float IdleTimeout;
-var bool bAddFavorite;
+var bool bIsFavorite;
 var bool bNoPlayerAgreementShim;
 
 var string NewIPHeaderText;
 var string NewIPContentText;
-var string NewIPAlreadyFavoriteText;
 var string NewIPAddress;
 var string NewFavoriteName;
 
@@ -39,7 +38,7 @@ var NewIPInfoConfig ConfigData;
 replication
 {
     reliable if(Role == ROLE_Authority)
-        NewIPHeaderText, NewIPContentText, NewIPAlreadyFavoriteText,
+        NewIPHeaderText, NewIPContentText,
         NewIPAddress, NewFavoriteName;
     reliable if(Role < ROLE_Authority)
         ServerAcknowledge;
@@ -59,7 +58,6 @@ function Setup(NewIPInfoServerConfig SC)
 
     NewIPHeaderText = SC.HeaderText;
     NewIPContentText = SC.ContentText;
-    NewIPAlreadyFavoriteText = SC.AlreadyFavoriteText;
     NewIPAddress = SC.NewIPAddress;
     NewFavoriteName = SC.NewFavoriteName;
 
@@ -217,22 +215,21 @@ simulated function CheckFavorite()
     Favorite.IP = CurrentIP;
     Favorite.Port = CurrentPort;
     if(class'ExtendedConsole'.static.InFavorites(Favorite))
-        bAddFavorite = true;
+    {
+        bIsFavorite = true;
+    }
 }
 
-simulated function MaybeAddFavorite()
+simulated function AddFavorite()
 {
     local int i;
     local ExtendedConsole.ServerFavorite NewFavorite;
 
-    if(bAddFavorite)
-    {
-        i = InStr(NewIPAddress, ":");
-        NewFavorite.IP = Left(NewIPAddress, i);
-        NewFavorite.Port = int(Mid(NewIPAddress, i + 1));
-        NewFavorite.ServerName = class'NewIPInfoPage'.static.Colorize(NewFavoriteName);
-        class'ExtendedConsole'.static.AddFavorite(NewFavorite);
-    }
+    i = InStr(NewIPAddress, ":");
+    NewFavorite.IP = Left(NewIPAddress, i);
+    NewFavorite.Port = int(Mid(NewIPAddress, i + 1));
+    NewFavorite.ServerName = class'NewIPInfoPage'.static.Colorize(NewFavoriteName);
+    class'ExtendedConsole'.static.AddFavorite(NewFavorite);
 }
 
 simulated function ShowMenu()
@@ -251,6 +248,7 @@ simulated function ShowMenu()
     if(InfoPage != None)
     {
         InfoPage.Manager = Self;
+        InfoPage.ckAddFavorite.Checked(bIsFavorite);
         InfoPage.SetText();
     }
 }

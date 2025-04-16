@@ -11,8 +11,10 @@ class NewIPInfoPage extends GUIPage;
 var automated GUISectionBackground sbBackground, sbButtons;
 var automated GUILabel txHeader;
 var automated GUIScrollTextBox lbText;
+var automated moCheckbox ckAddFavorite;
 var automated GUIButton btAcknowledge;
 
+var string Text_AddFavorite;
 var string Text_Acknowledge;
 
 var NewIPInfoManager Manager;
@@ -24,25 +26,16 @@ function InitComponent(GUIController MyController, GUIComponent MyOwner)
 
     bClosed = false;
 
+    ckAddFavorite.SetCaption(Text_AddFavorite);
     btAcknowledge.Caption = Text_Acknowledge;
 }
 
 function SetText()
 {
     txHeader.Caption = Colorize(Manager.NewIPHeaderText);
-    if(Manager.bAddFavorite)
-    {
-        lbText.MyScrollText.SetContent(
-            Colorize(Repl(Manager.NewIPContentText, "$1", Manager.NewIPAddress))
-            @ "||" $ Colorize(Manager.NewIPAlreadyFavoriteText)
-        );
-    }
-    else
-    {
-        lbText.MyScrollText.SetContent(
-            Colorize(Repl(Manager.NewIPContentText, "$1", Manager.NewIPAddress))
-        );
-    }
+    lbText.MyScrollText.SetContent(
+        Colorize(Repl(Manager.NewIPContentText, "$1", Manager.NewIPAddress))
+    );
 }
 
 function bool InternalOnPreDraw(Canvas C)
@@ -71,7 +64,8 @@ function bool Acknowledge(GUIComponent Sender)
     {
         Manager.ConfigData.bAcknowledged = true;
         Manager.ConfigData.SaveConfig();
-        Manager.MaybeAddFavorite();
+        if(ckAddFavorite.IsChecked())
+            Manager.AddFavorite();
 
         if(Manager.AgreementPage != None)
             Manager.UnShimPlayerAgreement();
@@ -199,12 +193,28 @@ defaultproperties
     End Object
     lbText=GUIScrollTextBox'lbText_'
 
+    Begin Object Class=moCheckbox Name=ckAddFavorite_
+        FontScale=FNS_Small
+        WinTop=0.588853
+        WinHeight=0.061350
+        WinLeft=0.284671
+        WinWidth=0.157743
+        bBoundToParent=True
+        bScaleToParent=True
+		CaptionWidth=0.900000
+		bSquare=True
+		ComponentJustification=TXTA_Right
+		LabelJustification=TXTA_Left
+		ComponentWidth=-1.000000
+    End Object
+    ckAddFavorite=moCheckbox'ckAddFavorite_'
+
     Begin Object Class=GUIButton Name=btAcknowledge_
         FontScale=FNS_Small
-        WinTop=0.572187
-        WinHeight=0.061350
-        WinLeft=0.396128
-        WinWidth=0.207744
+        WinTop=0.583298
+        WinHeight=0.041558
+        WinLeft=0.566438
+        WinWidth=0.153577
         bBoundToParent=True
         bScaleToParent=True
         OnClick=NewIPInfoPage.Acknowledge
@@ -212,6 +222,7 @@ defaultproperties
     End Object
     btAcknowledge=GUIButton'btAcknowledge_'
 
+    Text_AddFavorite="Add to Favorites"
     Text_Acknowledge="Acknowledge"
 
     bAllowedAsLast=True
